@@ -41,6 +41,7 @@ from meshkernel.py_structures import (
     DeleteMeshOption,
     GeometryList,
     GriddedSamples,
+    InterpolationType,
     MakeGridParameters,
     Mesh1d,
     Mesh2d,
@@ -1585,6 +1586,80 @@ class MeshKernel:
             byref(c_polygon),
         )
 
+    def mkernel_delete_property(self, propertyId: int):
+        """
+        Deletes a property and its calculator.
+
+        Args:
+            propertyId (int): The property id.
+        """
+
+        self._execute_function(
+            self.lib.mkernel_deallocate_property,
+            c_int(propertyId),
+        )
+
+    def mkernel_set_property(
+        self,
+        projection: ProjectionType,
+        interpolationType: InterpolationType,
+        sampleData: GeometryList,
+    ) -> int:
+        """
+        Sets the property data for the mesh, the sample data points do not have to match the mesh2d nodes.
+
+        Args:
+            projection (ProjectionType): The projection type used by the sample data.
+            interpolationType (InterpolationType): The type of interpolation required, triangulation or averaging.
+            sampleData (GeometryList): The sample data and associated sample data points
+
+        Returns:
+            int: The id of the property.
+        """
+
+        c_sampleData = CGeometryList.from_geometrylist(sampleData)
+        propertyId = c_int()
+
+        self._execute_function(
+            self.lib.mkernel_mesh2d_set_property,
+            c_int(projection.value),
+            interpolationType,
+            byref(c_sampleData),
+            byref(propertyId),
+        )
+
+        return propertyId.value
+
+    def mkernel_mesh2d_casulli_refinement_based_on_depths(
+        self,
+        polygons: GeometryList,
+        propertyId: int,
+        meshRefinementParameters: MeshRefinementParameters,
+        minimumRefinementDepth: float,
+    ) -> None:
+        """
+        Refine mesh using the Casulli refinement algorithm based on the depth values.
+
+        Args:
+            polygons (GeometryList): The polygon within which the refinement is computed.
+            propertyId (int): The identifier of the property and its associated interpolator.
+            meshRefinementParameters (MeshRefinementParameters): Parameters indicating how the mesh is to be refined.
+            minimumRefinementDepth (float): Nodes with depth value less than this value will not be marked for refinement.
+        """
+
+        c_polygons = CGeometryList.from_geometrylist(polygons)
+        c_refinement_params = CMeshRefinementParameters.from_meshrefinementparameters(
+            meshRefinementParameters
+        )
+        self._execute_function(
+            self.lib.mkernel_mesh2d_casulli_refinement_wrt_depths,
+            self._meshkernelid,
+            byref(c_polygons),
+            c_int(propertyId),
+            byref(c_refinement_params),
+            c_double(minimumRefinementDepth),
+        )
+
     def mesh2d_compute_orthogonalization(
         self,
         project_to_land_boundary_option: ProjectToLandBoundaryOption,
@@ -1648,7 +1723,9 @@ class MeshKernel:
 
         return geometry_list_out
 
-    def mesh2d_get_property(self, property: Mesh2d.Property) -> GeometryList:
+    def mesh2d_get_property(
+        self, mesh2dLocation: Mesh2dLocation, property: Mesh2d.Property
+    ) -> GeometryList:
         """Gets the polygons matching the metric value within the minimum and maximum value.
 
         Args:
@@ -1682,6 +1759,7 @@ class MeshKernel:
             self.lib.mkernel_mesh2d_get_property,
             self._meshkernelid,
             c_int(property),
+            c_int(mesh2dLocation.value),
             byref(c_property_list),
         )
 

@@ -100,6 +100,14 @@ class InterpolationValues(IntEnum):
     DOUBLE = 3
 
 
+@unique
+class InterpolationType(IntEnum):
+    """The Mesh2d location types."""
+
+    TRIANGULATION = 0
+    AVERAGING = 1
+
+
 class Mesh2d:
     """This class is used for getting and setting two-dimensional mesh data.
 

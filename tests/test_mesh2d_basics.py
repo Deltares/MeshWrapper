@@ -10,6 +10,7 @@ from meshkernel import (
     GeometryList,
     GriddedSamples,
     InputError,
+    InterpolationType,
     InterpolationValues,
     MakeGridParameters,
     Mesh2d,
@@ -562,7 +563,6 @@ def test_mesh2d_delete_empty_polygon(
 
     x_coordinates = np.empty(0, dtype=np.double)
     y_coordinates = np.empty(0, dtype=np.double)
-
     geometry_list = GeometryList(x_coordinates, y_coordinates)
     delete_option = DeleteMeshOption.INSIDE_NOT_INTERSECTED
 
@@ -2311,6 +2311,7 @@ def test_mesh2d_deletion_and_get_orthogonality(
 cases_get_property = [
     (
         Mesh2d.Property.ORTHOGONALITY,
+        Mesh2dLocation.EDGES,
         np.array(
             [
                 -999.0,
@@ -2343,6 +2344,7 @@ cases_get_property = [
     ),
     (
         Mesh2d.Property.EDGE_LENGTHS,
+        Mesh2dLocation.EDGES,
         np.array(
             [
                 100.0,
@@ -2377,12 +2379,13 @@ cases_get_property = [
 
 
 @pytest.mark.parametrize(
-    "property, expected_values",
+    "property, location, expected_values",
     cases_get_property,
 )
 def test_mesh2d_get_property(
     meshkernel_with_mesh2d: MeshKernel,
     property: Mesh2d.Property,
+    location: Mesh2dLocation,
     expected_values: ndarray,
 ):
     """Test mesh2d_get_property,
@@ -2390,7 +2393,7 @@ def test_mesh2d_get_property(
     """
     mk = meshkernel_with_mesh2d(rows=3, columns=3, spacing_x=50.0, spacing_y=100.0)
 
-    property_list = mk.mesh2d_get_property(property)
+    property_list = mk.mesh2d_get_property(location, property)
 
     assert property_list.values == approx(expected_values, abs=1e-6)
 
@@ -2421,3 +2424,59 @@ def test_mesh2d_get_filtered_face_polygons():
 
     assert face_polygons.x_coordinates == approx(expected_coordinates_x, abs=1e-6)
     assert face_polygons.y_coordinates == approx(expected_coordinates_y, abs=1e-6)
+
+
+def test_mesh2d_casulli_refinement_based_on_depths():
+    """Test test_mesh2d_casulli_refinement_based_on_depths on spherical projection"""
+    mk = MeshKernel(ProjectionType.CARTESIAN)
+
+    x_start, x_end = 0, 10000
+    y_min, y_max = 0, 10000
+    num_samples = 100  # Number of samples in each direction
+
+    makeGridParameters = MakeGridParameters()
+    makeGridParameters.origin_x = x_start
+    makeGridParameters.origin_y = y_min
+    makeGridParameters.upper_right_x = x_end
+    makeGridParameters.upper_right_y = y_max
+    makeGridParameters.block_size_x = 1000.0
+    makeGridParameters.block_size_y = 1000.0
+
+    mk.mesh2d_make_rectangular_mesh_on_extension(makeGridParameters)
+
+    mesh2d_not_refined = mk.mesh2d_get()
+
+    x_grid, y_grid = np.meshgrid(
+        np.linspace(x_start, x_end, num_samples), np.linspace(y_min, y_max, num_samples)
+    )
+    values = np.array(
+        np.interp(x_grid, [x_start, x_end], [-10.0, 5.0]), dtype=np.double
+    )
+
+    x_coordinates = np.array(x_grid.flatten(), dtype=np.double)
+    y_coordinates = np.array(y_grid.flatten(), dtype=np.double)
+    values = np.array(values.flatten(), dtype=np.double)
+
+    samples = GeometryList(
+        x_coordinates=x_coordinates, y_coordinates=y_coordinates, values=values
+    )
+    property_id = mk.mkernel_set_property(
+        ProjectionType.CARTESIAN, InterpolationType.AVERAGING, samples
+    )
+
+    polygons = GeometryList(
+        x_coordinates=np.empty(0, dtype=np.double),
+        y_coordinates=np.empty(0, dtype=np.double),
+    )
+
+    meshRefinementParameters = MeshRefinementParameters()
+    minimumRefinementDepth = 0.0
+    mk.mkernel_mesh2d_casulli_refinement_based_on_depths(
+        polygons, property_id, meshRefinementParameters, minimumRefinementDepth
+    )
+    mk.mkernel_delete_property(property_id)
+    mesh2d_refined = mk.mesh2d_get()
+
+    # new mesh has more nodes and edges than the starting mesh, it has been refined
+    assert len(mesh2d_not_refined.node_x) == 121
+    assert len(mesh2d_refined.node_x) == 253
