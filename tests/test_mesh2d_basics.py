@@ -2428,22 +2428,28 @@ def test_mesh2d_get_filtered_face_polygons():
 
 def test_mesh2d__get_filtered_face_polygons_full_and_empty():
 
-    lon_min, lon_max, lat_min, lat_max =  46.2, 46.8, -18, -15.85
+    lon_min, lon_max, lat_min, lat_max = 46.2, 46.8, -18, -15.85
     dx = dy = 0.1
 
-    make_grid_parameters = MakeGridParameters(angle=0,
-                                                         origin_x=lon_min,
-                                                         origin_y=lat_min,
-                                                         upper_right_x=lon_max,
-                                                         upper_right_y=lat_max,
-                                                         block_size_x=dx,
-                                                         block_size_y=dy)
+    make_grid_parameters = MakeGridParameters(
+        angle=0,
+        origin_x=lon_min,
+        origin_y=lat_min,
+        upper_right_x=lon_max,
+        upper_right_y=lat_max,
+        block_size_x=dx,
+        block_size_y=dy,
+    )
 
     mk = MeshKernel(projection=ProjectionType.SPHERICAL)
     mk.curvilinear_compute_rectangular_grid_on_extension(make_grid_parameters)
     mk.curvilinear_convert_to_mesh2d()
 
-    orthogonality = mk.mesh2d_get_filtered_face_polygons(Mesh2d.Property.ORTHOGONALITY, 0.0, 1.0)
+    orthogonality = mk.mesh2d_get_filtered_face_polygons(
+        Mesh2d.Property.ORTHOGONALITY, 0.0, 1.0
+    )
     assert orthogonality.x_coordinates.shape[0] == 527
-    orthogonality = mk.mesh2d_get_filtered_face_polygons(Mesh2d.Property.ORTHOGONALITY, 0.1, 10.0)
+    orthogonality = mk.mesh2d_get_filtered_face_polygons(
+        Mesh2d.Property.ORTHOGONALITY, 0.1, 10.0
+    )
     assert orthogonality.x_coordinates.shape[0] == 0
