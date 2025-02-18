@@ -2428,17 +2428,14 @@ def test_mesh2d_get_filtered_face_polygons():
 
 def test_mesh2d__get_filtered_face_polygons_full_and_empty():
 
-    lon_min, lon_max, lat_min, lat_max = 46.2, 46.8, -18, -15.85
-    dx = dy = 0.1
-
     make_grid_parameters = MakeGridParameters(
         angle=0,
-        origin_x=lon_min,
-        origin_y=lat_min,
-        upper_right_x=lon_max,
-        upper_right_y=lat_max,
-        block_size_x=dx,
-        block_size_y=dy,
+        origin_x=46.2,
+        origin_y=-18,
+        upper_right_x=46.8,
+        upper_right_y=-15.85,
+        block_size_x=0.1,
+        block_size_y=0.1,
     )
 
     mk = MeshKernel(projection=ProjectionType.SPHERICAL)
