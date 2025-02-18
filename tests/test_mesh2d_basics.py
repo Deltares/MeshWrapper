@@ -2424,3 +2424,29 @@ def test_mesh2d_get_filtered_face_polygons():
 
     assert face_polygons.x_coordinates == approx(expected_coordinates_x, abs=1e-6)
     assert face_polygons.y_coordinates == approx(expected_coordinates_y, abs=1e-6)
+
+
+def test_mesh2d__get_filtered_face_polygons_full_and_empty():
+
+    make_grid_parameters = MakeGridParameters(
+        angle=0,
+        origin_x=46.2,
+        origin_y=-18,
+        upper_right_x=46.8,
+        upper_right_y=-15.85,
+        block_size_x=0.1,
+        block_size_y=0.1,
+    )
+
+    mk = MeshKernel(projection=ProjectionType.SPHERICAL)
+    mk.curvilinear_compute_rectangular_grid_on_extension(make_grid_parameters)
+    mk.curvilinear_convert_to_mesh2d()
+
+    orthogonality = mk.mesh2d_get_filtered_face_polygons(
+        Mesh2d.Property.ORTHOGONALITY, 0.0, 1.0
+    )
+    assert orthogonality.x_coordinates.shape[0] == 527
+    orthogonality = mk.mesh2d_get_filtered_face_polygons(
+        Mesh2d.Property.ORTHOGONALITY, 0.1, 10.0
+    )
+    assert orthogonality.x_coordinates.shape[0] == 0
